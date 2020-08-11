@@ -18,25 +18,25 @@ interface Request {
 class CreateTransactionService {
   public async execute({ title, type, value, category }: Request): Promise<Transaction> {
     const transactionsRepository = getCustomRepository(TransactionsRepository);
+    const categoryRepository = getRepository(Category);
     const { total } = await transactionsRepository.getBalance();
     if(type === 'outcome' && value > total) {
       throw new AppError("You do not have enough balance");
     }
-    const categoriesRepository = getRepository(Category);
-    let categoryFind = await categoriesRepository.findOne({ where: { title: category } });
-    if (!categoryFind) {
-      const newCategory = {
+    let transactionCategory = await categoryRepository.findOne({ where: { title: category }, });
+    if (!transactionCategory) {
+      transactionCategory = categoryRepository.create({
         title: category,
-      }
-      categoryFind = await categoriesRepository.save(newCategory);
+      });
+      await categoryRepository.save(transactionCategory);
     }
     const transaction = transactionsRepository.create({
       title,
       type,
       value,
-      category_id: categoryFind.id,
-    }
-    );
+      category: transactionCategory,
+    });
+    
     await transactionsRepository.save(transaction);
     return transaction;
   }
